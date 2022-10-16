@@ -87,10 +87,9 @@ struct data {
 };
 
 static int entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs) {
-  int res;
   struct data* dt = (struct data*) ri->data;
-  dt->tfm = regs_get_kernel_argument(regs, 0);
-  dt->buf = regs_get_kernel_argument(regs, 1);
+  dt->tfm = (struct crypto_kpp *) regs_get_kernel_argument(regs, 0);
+  dt->buf = (const void *) regs_get_kernel_argument(regs, 1);
   dt->len = regs_get_kernel_argument(regs, 2);
   printk(KERN_INFO "dhack: kretprobe entry, tfm: %p, buf: %p, len: %d\n", dt->tfm, dt->buf, dt->len);
   return 0;
