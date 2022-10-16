@@ -31,7 +31,7 @@ static int dh_check_params_length(unsigned int p_len)
 	if (fips_enabled)
 		return (p_len < 2048) ? -EINVAL : 0;
 
-	return (p_len < 1536) ? -EINVAL : 0;
+	return (p_len < 1024) ? -EINVAL : 0;
 }
 
 static int dh_set_params(struct dh_ctx *ctx, struct dh *params)
@@ -76,37 +76,48 @@ err_clear_ctx:
 	return -EINVAL;
 }
 
-int pre_handler(struct kprobe *p, struct pt_regs *regs) {
-  printk(KERN_INFO "kprobe hit\n");
+struct data {
+  int res;
+};
+
+static int entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs) {
+  int res;
+  // res = dh_set_secret(regs->di, regs->si, regs->dx);
+  ((struct data*) ri->data)->res = res;
+  printk(KERN_INFO "kprobe hit, res: %d\n", res);
   return 0;
 }
 
-void post_handler(struct kprobe *p, struct pt_regs *regs,
-                  unsigned long flags) {
-  printk(KERN_INFO "kprobe post hit\n");
+static int handler(struct kretprobe_instance *ri, struct pt_regs *regs) {
+  printk(KERN_INFO "kprobe post hit, rax: %d\n", regs->ax);
+  // regs->ax = ((struct data*) ri->data)->res;
+  return 0;
 }
 
-static struct kprobe kp = {
-  .symbol_name = "dh_set_secret",
-  .pre_handler = pre_handler,
-  .post_handler = post_handler,
+static struct kretprobe krp = {
+  .handler = handler,
+  .entry_handler = entry_handler,
+  .maxactive = 20,
+  .data_size = sizeof(struct data),
 };
 
 int init_module(void)
 { 
     int ret;
-    ret = register_kprobe(&kp);
+    krp.kp.symbol_name = "dh_set_secret";
+    ret = register_kretprobe(&krp);
     if (ret < 0) {
       printk(KERN_ERR "failed to register kprobe: %d\n", ret);
       return ret;
     }
-    printk(KERN_INFO "successfully registerd kprobe\n");
+    printk(KERN_INFO "successfully registerd kprobe at %p\n", krp.kp.addr);
     return 0; 
 } 
 
 void cleanup_module(void)
 { 
-  unregister_kprobe(&kp);
+  unregister_kretprobe(&krp);
+  printk(KERN_INFO "unregistered kprobe\n");
 } 
 
 MODULE_LICENSE("GPL");
