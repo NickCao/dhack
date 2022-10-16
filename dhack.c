@@ -97,11 +97,14 @@ static int entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs) {
 }
 
 static int handler(struct kretprobe_instance *ri, struct pt_regs *regs) {
+  int res;
   struct data* dt = (struct data*) ri->data;
-  printk(KERN_INFO "dhack: kretprobe exit, rax: %d\n", regs->ax);
-  if (regs->ax != 0) {
-    regs->ax = dh_set_secret(dt->tfm, dt->buf, dt->len);
-    printk(KERN_INFO "dhack: kretprobe exit, called modified function, rax: %d\n", regs->ax);
+  res = regs_return_value(regs);
+  printk(KERN_INFO "dhack: kretprobe exit, res: %d\n", res);
+  if (res != 0) {
+    res = dh_set_secret(dt->tfm, dt->buf, dt->len);
+    regs_set_return_value(regs, res);
+    printk(KERN_INFO "dhack: kretprobe exit, called modified function, res: %d\n", res);
   }
   return 0;
 }
