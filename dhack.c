@@ -1,3 +1,5 @@
+#define pr_fmt(fmt) "%s: " fmt, KBUILD_MODNAME
+
 #include <linux/module.h>
 #include <linux/kprobes.h>
 #include <linux/fips.h>
@@ -82,7 +84,7 @@ err_clear_ctx:
 
 static int pre_handler(struct kprobe *p, struct pt_regs *regs) {
   instruction_pointer_set(regs, (unsigned long) dh_set_secret);
-  printk(KERN_INFO "dhack: kprobe entry, redirecting control flow\n");
+  pr_info("kprobe entry, calling modified function");
   return 1;
 }
 
@@ -93,13 +95,13 @@ static struct kprobe kp = {
 
 int init_module(void)
 { 
-  printk(KERN_INFO "dhack: registering kprobe\n");
+  pr_info("registering kprobe");
   return register_kprobe(&kp);
 } 
 
 void cleanup_module(void)
 { 
-  printk(KERN_INFO "dhack: unregistering kprobe\n");
+  pr_info("unregistering kprobe");
   unregister_kprobe(&kp);
 } 
 
