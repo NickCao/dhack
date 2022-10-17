@@ -93,20 +93,14 @@ static struct kprobe kp = {
 
 int init_module(void)
 { 
-    int ret;
-    ret = register_kprobe(&kp);
-    if (ret < 0) {
-      printk(KERN_ERR "dhack: failed to register kprobe: %d\n", ret);
-      return ret;
-    }
-    printk(KERN_INFO "dhack: successfully registerd kprobe at %p\n", kp.addr);
-    return 0; 
+  printk(KERN_INFO "dhack: registering kprobe\n");
+  return register_kprobe(&kp);
 } 
 
 void cleanup_module(void)
 { 
+  printk(KERN_INFO "dhack: unregistering kprobe\n");
   unregister_kprobe(&kp);
-  printk(KERN_INFO "dhack: unregistered kprobe\n");
 } 
 
 MODULE_LICENSE("GPL");
