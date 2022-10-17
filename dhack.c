@@ -80,58 +80,33 @@ err_clear_ctx:
 
 // end copied code
 
-struct data {
-  struct crypto_kpp *tfm;
-  const void *buf;
-	unsigned int len;
-};
-
-static int entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs) {
-  struct data* dt = (struct data*) ri->data;
-  dt->tfm = (struct crypto_kpp *) regs_get_kernel_argument(regs, 0);
-  dt->buf = (const void *) regs_get_kernel_argument(regs, 1);
-  dt->len = regs_get_kernel_argument(regs, 2);
-  printk(KERN_INFO "dhack: kretprobe entry, tfm: %p, buf: %p, len: %d\n", dt->tfm, dt->buf, dt->len);
-  return 0;
+static int pre_handler(struct kprobe *p, struct pt_regs *regs) {
+  instruction_pointer_set(regs, (unsigned long) dh_set_secret);
+  printk(KERN_INFO "dhack: kprobe entry, redirecting control flow\n");
+  return 1;
 }
 
-static int handler(struct kretprobe_instance *ri, struct pt_regs *regs) {
-  int res;
-  struct data* dt = (struct data*) ri->data;
-  res = regs_return_value(regs);
-  printk(KERN_INFO "dhack: kretprobe exit, res: %d\n", res);
-  if (res != 0) {
-    res = dh_set_secret(dt->tfm, dt->buf, dt->len);
-    regs_set_return_value(regs, res);
-    printk(KERN_INFO "dhack: kretprobe exit, called modified function, res: %d\n", res);
-  }
-  return 0;
-}
-
-static struct kretprobe krp = {
-  .handler = handler,
-  .entry_handler = entry_handler,
-  .data_size = sizeof(struct data),
-  .maxactive = 20,
+static struct kprobe kp = {
+  .symbol_name = "dh_set_secret",
+  .pre_handler = pre_handler,
 };
 
 int init_module(void)
 { 
     int ret;
-    krp.kp.symbol_name = "dh_set_secret";
-    ret = register_kretprobe(&krp);
+    ret = register_kprobe(&kp);
     if (ret < 0) {
-      printk(KERN_ERR "dhack: failed to register kretprobe: %d\n", ret);
+      printk(KERN_ERR "dhack: failed to register kprobe: %d\n", ret);
       return ret;
     }
-    printk(KERN_INFO "dhack: successfully registerd kretprobe at %p\n", krp.kp.addr);
+    printk(KERN_INFO "dhack: successfully registerd kprobe at %p\n", kp.addr);
     return 0; 
 } 
 
 void cleanup_module(void)
 { 
-  unregister_kretprobe(&krp);
-  printk(KERN_INFO "dhack: unregistered kretprobe\n");
+  unregister_kprobe(&kp);
+  printk(KERN_INFO "dhack: unregistered kprobe\n");
 } 
 
 MODULE_LICENSE("GPL");
