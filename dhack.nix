@@ -6,9 +6,7 @@ stdenv.mkDerivation {
   hardeningDisable = [ "pic" ];
   nativeBuildInputs = kernel.moduleBuildDependencies;
   makeFlags = kernel.makeFlags ++ [
-    "-C ${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
+    "KDIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
     "INSTALL_MOD_PATH=$(out)"
-    "M=$(PWD)"
   ];
-  installTargets = "modules_install";
 }
